@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 	int block_index = 0;
 	int dirty_bytes = 0;
 	int output_bytes = 0;
-	uint32_t crc32_sum = 0;
+	uint32_t crc32_value = 0;
 	bool first = true;
 	for (int i = 0; i < chunk_count; ++i) {
 		const char *chunk_name = argv[2+i];
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 			first = false;
 			block_count = splits + 1;
 			output_bytes = size + 1;
-			crc32_sum = crc32;
+			crc32_value = crc32;
 			chunk_ident = new GF::value_type[block_count];
 			dirty_bytes = (output_bytes + block_count - 1) / block_count;
 			block_bytes = dirty_bytes;
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
 				block_bytes += SIMD - block_bytes % SIMD;
 			int code_bytes = block_count * block_bytes;
 			chunk_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, code_bytes));
-		} else if (block_count != splits + 1 || output_bytes != size + 1 || crc32_sum != crc32) {
+		} else if (block_count != splits + 1 || output_bytes != size + 1 || crc32_value != crc32) {
 			std::cerr << "Skipping file \"" << chunk_name << "\"." << std::endl;
 			continue;
 		}
@@ -105,6 +105,10 @@ int main(int argc, char **argv)
 	delete[] chunk_ident;
 	std::free(output_data);
 	std::free(chunk_data);
-	return crc() != crc32_sum;
+	if (crc() != crc32_value) {
+		std::cerr << "CRC value does not match!" << std::endl;
+		return 1;
+	}
+	return 0;
 }
 
