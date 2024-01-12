@@ -16,7 +16,7 @@ all: encode decode
 test: encode decode
 	dd if=/dev/urandom of=input.dat bs=512 count=512
 	$(QEMU) ./encode input.dat 5380 chunk{00..99}.crs
-	ls chunk*.crs | shuf | head -n 51 | xargs rm
+	ls chunk*.crs | sort -R | head -n 51 | xargs rm
 	$(QEMU) ./decode output.dat chunk*.crs
 	diff -q -s input.dat output.dat
 
