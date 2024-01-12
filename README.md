@@ -20,7 +20,7 @@ Output should be ```CRS(100, 49)```, which means we only need any 49 chunks of t
 Randomly delete (erase) 51 chunk files to only keep 49:
 
 ```
-rm $(ls chunk*.crs | shuf | head -n 51)
+ls chunk*.crs | shuf | head -n 51 | xargs rm
 ```
 
 Decode ```output.dat``` from remaining chunk files:
