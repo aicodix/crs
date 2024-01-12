@@ -1,0 +1,5 @@
+.*.swp
+*.dat
+*.crs
+encode
+decode
