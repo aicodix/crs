@@ -18,7 +18,6 @@ test: encode decode
 	$(QEMU) ./encode input.dat 5380 chunk{00..99}.crs
 	ls chunk*.crs | shuf | head -n 51 | xargs rm
 	$(QEMU) ./decode output.dat chunk*.crs
-	truncate -s 262144 output.dat
 	diff -q -s input.dat output.dat
 
 encode: encode.cc

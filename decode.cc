@@ -29,7 +29,8 @@ int main(int argc, char **argv)
 	int block_bytes = 0;
 	int block_count = 0;
 	int block_index = 0;
-	int payload_bytes = 0;
+	int dirty_bytes = 0;
+	int output_bytes = 0;
 	uint32_t time_stamp;
 	bool first = true;
 	for (int i = 0; i < chunk_count; ++i) {
@@ -45,8 +46,8 @@ int main(int argc, char **argv)
 		chunk_file.read(reinterpret_cast<char *>(&splits), 1);
 		uint16_t ident;
 		chunk_file.read(reinterpret_cast<char *>(&ident), 2);
-		uint16_t size;
-		chunk_file.read(reinterpret_cast<char *>(&size), 2);
+		int32_t size;
+		chunk_file.read(reinterpret_cast<char *>(&size), 3);
 		uint32_t stamp;
 		chunk_file.read(reinterpret_cast<char *>(&stamp), 4);
 		if (!chunk_file || magic[0] != 'C' || magic[1] != 'R' || magic[2] != 'S') {
@@ -56,20 +57,21 @@ int main(int argc, char **argv)
 		if (first) {
 			first = false;
 			block_count = splits + 1;
-			payload_bytes = size + 1;
+			output_bytes = size + 1;
 			time_stamp = stamp;
 			chunk_ident = new GF::value_type[block_count];
-			block_bytes = payload_bytes;
+			dirty_bytes = (output_bytes + block_count - 1) / block_count;
+			block_bytes = dirty_bytes;
 			if (block_bytes % SIMD)
 				block_bytes += SIMD - block_bytes % SIMD;
 			int code_bytes = block_count * block_bytes;
 			chunk_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, code_bytes));
-		} else if (block_count != splits + 1 || payload_bytes != size + 1 || time_stamp != stamp) {
+		} else if (block_count != splits + 1 || output_bytes != size + 1 || time_stamp != stamp) {
 			std::cerr << "Skipping file \"" << chunk_name << "\"." << std::endl;
 			continue;
 		}
 		chunk_ident[block_index] = ident;
-		chunk_file.read(reinterpret_cast<char *>(chunk_data + block_index * block_bytes), payload_bytes);
+		chunk_file.read(reinterpret_cast<char *>(chunk_data + block_index * block_bytes), dirty_bytes);
 		if (++block_index >= block_count)
 			break;
 	}
@@ -88,9 +90,12 @@ int main(int argc, char **argv)
 	uint8_t *output_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, block_bytes));
 	GF *instance = new GF();
 	CODE::CauchyReedSolomonErasureCoding<GF> crs;
-	for (int i = 0; i < block_count; ++i) {
+	for (int i = 0, j = 0; i < block_count; ++i) {
 		crs.decode(output_data, chunk_data, chunk_ident, i, block_bytes, block_count);
-		output_file.write(reinterpret_cast<char *>(output_data), payload_bytes);
+		j += dirty_bytes;
+		if (j > output_bytes)
+			dirty_bytes -= j - output_bytes;
+		output_file.write(reinterpret_cast<char *>(output_data), dirty_bytes);
 	}
 	delete instance;
 	delete[] chunk_ident;

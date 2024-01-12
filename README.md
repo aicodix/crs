@@ -29,12 +29,6 @@ Decode ```output.dat``` from remaining chunk files:
 ./decode output.dat chunk*.crs
 ```
 
-For the moment (will be fixed soon), truncate ```output.dat``` to ```256KiB```:
-
-```
-truncate -s 262144 output.dat
-```
-
 Compare original ```input.dat``` with ```output.dat```:
 
 ```

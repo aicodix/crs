@@ -25,17 +25,21 @@ int main(int argc, char **argv)
 		std::cerr << "Couldn't get size of file \"" << input_name << "\"." << std::endl;
 		return 1;
 	}
+	if (sb.st_size > 16777216) {
+		std::cerr << "Size of file \"" << input_name << "\" too large." << std::endl;
+		return 1;
+	}
 	int input_bytes = sb.st_size;
 	int chunk_bytes = std::atoi(argv[2]);
 	int chunk_count = argc - 3;
-	int crs_overhead = 3 + 1 + 2 + 2 + 4; // CRS SPLITS IDENT SIZE STAMP
-	int payload_bytes = chunk_bytes - crs_overhead;
-	if (payload_bytes > 65536) {
+	int crs_overhead = 3 + 1 + 2 + 3 + 4; // CRS SPLITS IDENT SIZE STAMP
+	int avail_bytes = chunk_bytes - crs_overhead;
+	if (avail_bytes > 65536) {
 		std::cerr << "Size of chunks too large." << std::endl;
 		return 1;
 	}
-	int block_count = (input_bytes + payload_bytes - 1) / payload_bytes;
-	if (payload_bytes < 1 || block_count > 256) {
+	int block_count = (input_bytes + avail_bytes - 1) / avail_bytes;
+	if (avail_bytes < 1 || block_count > 256) {
 		std::cerr << "Size of chunks too small." << std::endl;
 		return 1;
 	}
@@ -54,13 +58,14 @@ int main(int argc, char **argv)
 #else
 	int SIMD = 16;
 #endif
-	int block_bytes = payload_bytes;
+	int dirty_bytes = (input_bytes + block_count - 1) / block_count;
+	int block_bytes = dirty_bytes;
 	if (block_bytes % SIMD)
 		block_bytes += SIMD - block_bytes % SIMD;
 	int mesg_bytes = block_count * block_bytes;
 	uint8_t *input_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, mesg_bytes));
 	for (int i = 0; i < block_count; ++i)
-		input_file.read(reinterpret_cast<char *>(input_data + block_bytes * i), payload_bytes);
+		input_file.read(reinterpret_cast<char *>(input_data + block_bytes * i), dirty_bytes);
 	typedef CODE::GaloisField<16, 0b10001000000001011, uint16_t> GF;
 	GF *instance = new GF();
 	CODE::CauchyReedSolomonErasureCoding<GF> crs;
@@ -80,11 +85,11 @@ int main(int argc, char **argv)
 		chunk_file.write(reinterpret_cast<char *>(&splits), 1);
 		uint16_t ident = chunk_ident;
 		chunk_file.write(reinterpret_cast<char *>(&ident), 2);
-		uint16_t size = payload_bytes - 1;
-		chunk_file.write(reinterpret_cast<char *>(&size), 2);
+		int32_t size = input_bytes - 1;
+		chunk_file.write(reinterpret_cast<char *>(&size), 3);
 		uint32_t stamp = time_stamp;
 		chunk_file.write(reinterpret_cast<char *>(&stamp), 4);
-		chunk_file.write(reinterpret_cast<char *>(chunk_data), payload_bytes);
+		chunk_file.write(reinterpret_cast<char *>(chunk_data), dirty_bytes);
 	}
 	delete instance;
 	std::free(input_data);
