@@ -4,12 +4,12 @@ Cauchy Reed Solomon Erasure Coding
 Copyright 2024 Ahmet Inan <inan@aicodix.de>
 */
 
-#include <ctime>
 #include <cassert>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <sys/stat.h>
+#include "crc.hh"
 #include "galois_field.hh"
 #include "cauchy_reed_solomon_erasure_coding.hh"
 
@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 	int input_bytes = sb.st_size;
 	int chunk_bytes = std::atoi(argv[2]);
 	int chunk_count = argc - 3;
-	int crs_overhead = 3 + 1 + 2 + 3 + 4; // CRS SPLITS IDENT SIZE STAMP
+	int crs_overhead = 3 + 1 + 2 + 3 + 4; // CRS SPLITS IDENT SIZE CRC32
 	int avail_bytes = chunk_bytes - crs_overhead;
 	if (avail_bytes > 65536) {
 		std::cerr << "Size of chunks too large." << std::endl;
@@ -64,18 +64,20 @@ int main(int argc, char **argv)
 		block_bytes += SIMD - block_bytes % SIMD;
 	int mesg_bytes = block_count * block_bytes;
 	uint8_t *input_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, mesg_bytes));
+	CODE::CRC<uint32_t> crc(0x8F6E37A0);
 	for (int i = 0, j = 0; i < block_count; ++i) {
 		j += dirty_bytes;
 		int copy_bytes = dirty_bytes;
 		if (j > input_bytes)
 			copy_bytes -= j - input_bytes;
 		input_file.read(reinterpret_cast<char *>(input_data + block_bytes * i), copy_bytes);
+		for (int k = 0; k < copy_bytes; ++k)
+			crc(input_data[block_bytes * i + k]);
 	}
 	typedef CODE::GaloisField<16, 0b10001000000001011, uint16_t> GF;
 	GF *instance = new GF();
 	CODE::CauchyReedSolomonErasureCoding<GF> crs;
 	uint8_t *chunk_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, block_bytes));
-	time_t time_stamp = time(nullptr);
 	for (int i = 0; i < chunk_count; ++i) {
 		int chunk_ident = block_count + i;
 		crs.encode(input_data, chunk_data, chunk_ident, block_bytes, block_count);
@@ -92,8 +94,8 @@ int main(int argc, char **argv)
 		chunk_file.write(reinterpret_cast<char *>(&ident), 2);
 		int32_t size = input_bytes - 1;
 		chunk_file.write(reinterpret_cast<char *>(&size), 3);
-		uint32_t stamp = time_stamp;
-		chunk_file.write(reinterpret_cast<char *>(&stamp), 4);
+		uint32_t crc32 = crc();
+		chunk_file.write(reinterpret_cast<char *>(&crc32), 4);
 		chunk_file.write(reinterpret_cast<char *>(chunk_data), dirty_bytes);
 	}
 	delete instance;

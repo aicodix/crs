@@ -8,6 +8,7 @@ Copyright 2024 Ahmet Inan <inan@aicodix.de>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include "crc.hh"
 #include "galois_field.hh"
 #include "cauchy_reed_solomon_erasure_coding.hh"
 
@@ -31,7 +32,7 @@ int main(int argc, char **argv)
 	int block_index = 0;
 	int dirty_bytes = 0;
 	int output_bytes = 0;
-	uint32_t time_stamp;
+	uint32_t crc32_sum = 0;
 	bool first = true;
 	for (int i = 0; i < chunk_count; ++i) {
 		const char *chunk_name = argv[2+i];
@@ -48,8 +49,8 @@ int main(int argc, char **argv)
 		chunk_file.read(reinterpret_cast<char *>(&ident), 2);
 		int32_t size;
 		chunk_file.read(reinterpret_cast<char *>(&size), 3);
-		uint32_t stamp;
-		chunk_file.read(reinterpret_cast<char *>(&stamp), 4);
+		uint32_t crc32;
+		chunk_file.read(reinterpret_cast<char *>(&crc32), 4);
 		if (!chunk_file || magic[0] != 'C' || magic[1] != 'R' || magic[2] != 'S') {
 			std::cerr << "Skipping file \"" << chunk_name << "\"." << std::endl;
 			continue;
@@ -58,7 +59,7 @@ int main(int argc, char **argv)
 			first = false;
 			block_count = splits + 1;
 			output_bytes = size + 1;
-			time_stamp = stamp;
+			crc32_sum = crc32;
 			chunk_ident = new GF::value_type[block_count];
 			dirty_bytes = (output_bytes + block_count - 1) / block_count;
 			block_bytes = dirty_bytes;
@@ -66,7 +67,7 @@ int main(int argc, char **argv)
 				block_bytes += SIMD - block_bytes % SIMD;
 			int code_bytes = block_count * block_bytes;
 			chunk_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, code_bytes));
-		} else if (block_count != splits + 1 || output_bytes != size + 1 || time_stamp != stamp) {
+		} else if (block_count != splits + 1 || output_bytes != size + 1 || crc32_sum != crc32) {
 			std::cerr << "Skipping file \"" << chunk_name << "\"." << std::endl;
 			continue;
 		}
@@ -90,6 +91,7 @@ int main(int argc, char **argv)
 	uint8_t *output_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, block_bytes));
 	GF *instance = new GF();
 	CODE::CauchyReedSolomonErasureCoding<GF> crs;
+	CODE::CRC<uint32_t> crc(0x8F6E37A0);
 	for (int i = 0, j = 0; i < block_count; ++i) {
 		crs.decode(output_data, chunk_data, chunk_ident, i, block_bytes, block_count);
 		j += dirty_bytes;
@@ -97,11 +99,13 @@ int main(int argc, char **argv)
 		if (j > output_bytes)
 			copy_bytes -= j - output_bytes;
 		output_file.write(reinterpret_cast<char *>(output_data), copy_bytes);
+		for (int k = 0; k < copy_bytes; ++k)
+			crc(output_data[k]);
 	}
 	delete instance;
 	delete[] chunk_ident;
 	std::free(output_data);
 	std::free(chunk_data);
-	return 0;
+	return crc() != crc32_sum;
 }
 
