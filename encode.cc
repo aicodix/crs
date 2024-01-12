@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 		block_bytes += SIMD - block_bytes % SIMD;
 	int mesg_bytes = block_count * block_bytes;
 	uint8_t *input_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, mesg_bytes));
-	CODE::CRC<uint32_t> crc(0x8F6E37A0);
+	static CODE::CRC<uint32_t> crc(0x8F6E37A0);
 	for (int i = 0, j = 0; i < block_count; ++i) {
 		j += dirty_bytes;
 		int copy_bytes = dirty_bytes;
@@ -75,7 +75,7 @@ int main(int argc, char **argv)
 			crc(input_data[block_bytes * i + k]);
 	}
 	typedef CODE::GaloisField<16, 0b10001000000001011, uint16_t> GF;
-	GF *instance = new GF();
+	static GF instance;
 	CODE::CauchyReedSolomonErasureCoding<GF> crs;
 	uint8_t *chunk_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, block_bytes));
 	for (int i = 0; i < chunk_count; ++i) {
@@ -98,7 +98,6 @@ int main(int argc, char **argv)
 		chunk_file.write(reinterpret_cast<char *>(&crc32), 4);
 		chunk_file.write(reinterpret_cast<char *>(chunk_data), dirty_bytes);
 	}
-	delete instance;
 	std::free(input_data);
 	std::free(chunk_data);
 	return 0;

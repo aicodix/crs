@@ -89,9 +89,9 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	uint8_t *output_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, block_bytes));
-	GF *instance = new GF();
+	static GF instance;
 	CODE::CauchyReedSolomonErasureCoding<GF> crs;
-	CODE::CRC<uint32_t> crc(0x8F6E37A0);
+	static CODE::CRC<uint32_t> crc(0x8F6E37A0);
 	for (int i = 0, j = 0; i < block_count; ++i) {
 		crs.decode(output_data, chunk_data, chunk_ident, i, block_bytes, block_count);
 		j += dirty_bytes;
@@ -102,7 +102,6 @@ int main(int argc, char **argv)
 		for (int k = 0; k < copy_bytes; ++k)
 			crc(output_data[k]);
 	}
-	delete instance;
 	delete[] chunk_ident;
 	std::free(output_data);
 	std::free(chunk_data);
