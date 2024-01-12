@@ -64,8 +64,13 @@ int main(int argc, char **argv)
 		block_bytes += SIMD - block_bytes % SIMD;
 	int mesg_bytes = block_count * block_bytes;
 	uint8_t *input_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, mesg_bytes));
-	for (int i = 0; i < block_count; ++i)
-		input_file.read(reinterpret_cast<char *>(input_data + block_bytes * i), dirty_bytes);
+	for (int i = 0, j = 0; i < block_count; ++i) {
+		j += dirty_bytes;
+		int copy_bytes = dirty_bytes;
+		if (j > input_bytes)
+			copy_bytes -= j - input_bytes;
+		input_file.read(reinterpret_cast<char *>(input_data + block_bytes * i), copy_bytes);
+	}
 	typedef CODE::GaloisField<16, 0b10001000000001011, uint16_t> GF;
 	GF *instance = new GF();
 	CODE::CauchyReedSolomonErasureCoding<GF> crs;

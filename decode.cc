@@ -93,9 +93,10 @@ int main(int argc, char **argv)
 	for (int i = 0, j = 0; i < block_count; ++i) {
 		crs.decode(output_data, chunk_data, chunk_ident, i, block_bytes, block_count);
 		j += dirty_bytes;
+		int copy_bytes = dirty_bytes;
 		if (j > output_bytes)
-			dirty_bytes -= j - output_bytes;
-		output_file.write(reinterpret_cast<char *>(output_data), dirty_bytes);
+			copy_bytes -= j - output_bytes;
+		output_file.write(reinterpret_cast<char *>(output_data), copy_bytes);
 	}
 	delete instance;
 	delete[] chunk_ident;
