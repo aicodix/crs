@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 		chunk_file.read(reinterpret_cast<char *>(&splits), 1);
 		uint16_t ident;
 		chunk_file.read(reinterpret_cast<char *>(&ident), 2);
-		int32_t size;
+		int32_t size = 0;
 		chunk_file.read(reinterpret_cast<char *>(&size), 3);
 		uint32_t crc32;
 		chunk_file.read(reinterpret_cast<char *>(&crc32), 4);
