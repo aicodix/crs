@@ -58,10 +58,11 @@ int main(int argc, char **argv)
 #else
 	int SIMD = 16;
 #endif
+	int SIMD2 = SIMD * sizeof(uint16_t);
 	int dirty_bytes = (input_bytes + block_count - 1) / block_count;
 	int block_bytes = dirty_bytes;
-	if (block_bytes % SIMD)
-		block_bytes += SIMD - block_bytes % SIMD;
+	if (block_bytes % SIMD2)
+		block_bytes += SIMD2 - (block_bytes % SIMD2);
 	int mesg_bytes = block_count * block_bytes;
 	uint8_t *input_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, mesg_bytes));
 	static CODE::CRC<uint32_t> crc(0x8F6E37A0);

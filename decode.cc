@@ -27,6 +27,7 @@ int main(int argc, char **argv)
 #else
 	int SIMD = 16;
 #endif
+	int SIMD2 = SIMD * sizeof(uint16_t);
 	int block_bytes = 0;
 	int block_count = 0;
 	int block_index = 0;
@@ -63,8 +64,8 @@ int main(int argc, char **argv)
 			chunk_ident = new GF::value_type[block_count];
 			dirty_bytes = (output_bytes + block_count - 1) / block_count;
 			block_bytes = dirty_bytes;
-			if (block_bytes % SIMD)
-				block_bytes += SIMD - block_bytes % SIMD;
+			if (block_bytes % SIMD2)
+				block_bytes += SIMD2 - block_bytes % SIMD2;
 			int code_bytes = block_count * block_bytes;
 			chunk_data = reinterpret_cast<uint8_t *>(std::aligned_alloc(SIMD, code_bytes));
 		} else if (block_count != splits + 1 || output_bytes != size + 1 || crc32_value != crc32) {
