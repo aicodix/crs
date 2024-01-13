@@ -33,7 +33,7 @@ int main(int argc, char **argv)
 	int chunk_bytes = std::atoi(argv[2]);
 	int chunk_count = argc - 3;
 	int crs_overhead = 3 + 1 + 2 + 3 + 4; // CRS SPLITS IDENT SIZE CRC32
-	int avail_bytes = chunk_bytes - crs_overhead;
+	int avail_bytes = (chunk_bytes - crs_overhead) & ~1;
 	if (avail_bytes > 65536) {
 		std::cerr << "Size of chunks too large." << std::endl;
 		return 1;
@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 		chunk_file.write(reinterpret_cast<char *>(&size), 3);
 		uint32_t crc32 = crc();
 		chunk_file.write(reinterpret_cast<char *>(&crc32), 4);
-		chunk_file.write(reinterpret_cast<char *>(chunk_data), dirty_bytes);
+		chunk_file.write(reinterpret_cast<char *>(chunk_data), dirty_bytes + (dirty_bytes & 1));
 	}
 	std::free(input_data);
 	std::free(chunk_data);

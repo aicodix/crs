@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 		chunk_ident[block_index] = ident;
-		chunk_file.read(reinterpret_cast<char *>(chunk_data + block_index * block_bytes), dirty_bytes);
+		chunk_file.read(reinterpret_cast<char *>(chunk_data + block_index * block_bytes), dirty_bytes + (dirty_bytes & 1));
 		if (++block_index >= block_count)
 			break;
 	}
