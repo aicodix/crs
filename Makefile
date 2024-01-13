@@ -19,6 +19,7 @@ test: encode decode
 	ls chunk*.crs | sort -R | head -n 51 | xargs rm
 	$(QEMU) ./decode output.dat chunk*.crs
 	diff -q -s input.dat output.dat
+	rm input.dat output.dat chunk*.crs
 
 encode: encode.cc
 	$(CXX) $(CXXFLAGS) $< -o $@
