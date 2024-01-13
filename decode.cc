@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 		chunk_file.read(reinterpret_cast<char *>(&size), 3);
 		uint32_t crc32;
 		chunk_file.read(reinterpret_cast<char *>(&crc32), 4);
-		if (!chunk_file || magic[0] != 'C' || magic[1] != 'R' || magic[2] != 'S') {
+		if (!chunk_file || magic[0] != 'C' || magic[1] != 'R' || magic[2] != 'S' || ident <= splits) {
 			std::cerr << "Skipping file \"" << chunk_name << "\"." << std::endl;
 			continue;
 		}
