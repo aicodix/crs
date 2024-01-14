@@ -4,6 +4,7 @@ Cauchy Reed Solomon Erasure Coding
 Copyright 2024 Ahmet Inan <inan@aicodix.de>
 */
 
+#include <set>
 #include <cassert>
 #include <cstdint>
 #include <fstream>
@@ -35,6 +36,7 @@ int main(int argc, char **argv)
 	int output_bytes = 0;
 	uint32_t crc32_value = 0;
 	bool first = true;
+	std::set<uint16_t> list;
 	for (int i = 0; i < chunk_count; ++i) {
 		const char *chunk_name = argv[2+i];
 		std::ifstream chunk_file(chunk_name, std::ios::binary);
@@ -52,7 +54,7 @@ int main(int argc, char **argv)
 		chunk_file.read(reinterpret_cast<char *>(&size), 3);
 		uint32_t crc32;
 		chunk_file.read(reinterpret_cast<char *>(&crc32), 4);
-		if (!chunk_file || magic[0] != 'C' || magic[1] != 'R' || magic[2] != 'S' || splits >= 1024 || ident <= splits) {
+		if (!chunk_file || magic[0] != 'C' || magic[1] != 'R' || magic[2] != 'S' || splits >= 1024 || ident <= splits || list.count(ident)) {
 			std::cerr << "Skipping file \"" << chunk_name << "\"." << std::endl;
 			continue;
 		}
@@ -72,6 +74,7 @@ int main(int argc, char **argv)
 			std::cerr << "Skipping file \"" << chunk_name << "\"." << std::endl;
 			continue;
 		}
+		list.insert(ident);
 		chunk_ident[block_index] = ident;
 		chunk_file.read(reinterpret_cast<char *>(chunk_data + block_index * block_bytes), dirty_bytes + (dirty_bytes & 1));
 		if (++block_index >= block_count)
