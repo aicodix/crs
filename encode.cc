@@ -32,14 +32,14 @@ int main(int argc, char **argv)
 	int input_bytes = sb.st_size;
 	int chunk_bytes = std::atoi(argv[2]);
 	int chunk_count = argc - 3;
-	int crs_overhead = 3 + 1 + 2 + 3 + 4; // CRS SPLITS IDENT SIZE CRC32
+	int crs_overhead = 3 + 2 + 2 + 3 + 4; // CRS SPLITS IDENT SIZE CRC32
 	int avail_bytes = (chunk_bytes - crs_overhead) & ~1;
 	if (avail_bytes > 65536) {
 		std::cerr << "Size of chunks too large." << std::endl;
 		return 1;
 	}
 	int block_count = (input_bytes + avail_bytes - 1) / avail_bytes;
-	if (avail_bytes < 1 || block_count > 256) {
+	if (avail_bytes < 1 || block_count > 1024) {
 		std::cerr << "Size of chunks too small." << std::endl;
 		return 1;
 	}
@@ -89,8 +89,8 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		chunk_file.write("CRS", 3);
-		uint8_t splits = block_count - 1;
-		chunk_file.write(reinterpret_cast<char *>(&splits), 1);
+		uint16_t splits = block_count - 1;
+		chunk_file.write(reinterpret_cast<char *>(&splits), 2);
 		uint16_t ident = chunk_ident;
 		chunk_file.write(reinterpret_cast<char *>(&ident), 2);
 		int32_t size = input_bytes - 1;

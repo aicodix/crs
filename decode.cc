@@ -44,15 +44,15 @@ int main(int argc, char **argv)
 		}
 		char magic[3];
 		chunk_file.read(magic, 3);
-		uint8_t splits;
-		chunk_file.read(reinterpret_cast<char *>(&splits), 1);
+		uint16_t splits;
+		chunk_file.read(reinterpret_cast<char *>(&splits), 2);
 		uint16_t ident;
 		chunk_file.read(reinterpret_cast<char *>(&ident), 2);
 		int32_t size = 0;
 		chunk_file.read(reinterpret_cast<char *>(&size), 3);
 		uint32_t crc32;
 		chunk_file.read(reinterpret_cast<char *>(&crc32), 4);
-		if (!chunk_file || magic[0] != 'C' || magic[1] != 'R' || magic[2] != 'S' || ident <= splits) {
+		if (!chunk_file || magic[0] != 'C' || magic[1] != 'R' || magic[2] != 'S' || splits >= 1024 || ident <= splits) {
 			std::cerr << "Skipping file \"" << chunk_name << "\"." << std::endl;
 			continue;
 		}
